@@ -9,10 +9,10 @@
 Some modifications Matt Newville
 """
 
-from PIL import Image
+# from PIL import Image
 import numpy as np
-import wx
-import cStringIO
+# import wx
+# import cStringIO
 
 error_dict = {
     FC2_ERROR_UNDEFINED                    :  "Undefined",
@@ -147,7 +147,7 @@ def library_version():
 
     Parameters
     ----------
-        None
+
 
     Returns
     -------
@@ -165,14 +165,14 @@ def library_version():
 
     Examples
     --------
-    >>> import pyflycapture2_C
-    >>> print pyflycapture2_C.library_version()
+    # >>> import pyflycapture2_C
+    # >>> print pyflycapture2_C.library_version()
     (2L, 3L, 2L, 14L)
     """
 
     cdef fc2Version v
     errcheck(fc2GetLibraryVersion(&v))
-    return (v.major, v.minor, v.type, v.build)
+    return v.major, v.minor, v.type, v.build
 
 cdef class Camera(object):
     """Camera object"""
@@ -303,7 +303,7 @@ cdef class Camera(object):
         """returns image size
         """
         errcheck(fc2RetrieveBuffer(self._context, &self.rawImage))
-        return (self.rawImage.cols, self.rawImage.rows)
+        return self.rawImage.cols, self.rawImage.rows
 
     def GrabNumPyImage(self, format='bgr'):
         """return an image as a NumPy array
@@ -315,52 +315,52 @@ cdef class Camera(object):
         if format == 'bgr':
             errcheck(fc2ConvertImageTo(FC2_PIXEL_FORMAT_BGR,
                                        &self.rawImage, &self.rgbImage))
-            bytes = bytearray(self.rgbImage.pData[:3*size])
-            img = np.array(bytes).reshape(nrows, ncols, 3)
+            bytes_ = bytearray(self.rgbImage.pData[:3*size])
+            img = np.array(bytes_).reshape(nrows, ncols, 3)
         elif format == 'rgb':
             errcheck(fc2ConvertImageTo(FC2_PIXEL_FORMAT_RGB8,
                                        &self.rawImage, &self.rgbImage))
-            bytes = bytearray(self.rgbImage.pData[:3*size])
-            img = np.array(bytes).reshape(nrows, ncols, 3)
+            bytes_ = bytearray(self.rgbImage.pData[:3*size])
+            img = np.array(bytes_).reshape(nrows, ncols, 3)
         elif format == 'gray':
             errcheck(fc2ConvertImageTo(FC2_PIXEL_FORMAT_MONO8,
                                        &self.rawImage, &self.rgbImage))
-            bytes = bytearray(self.rgbImage.pData[:size])
-            img = np.array(bytes).reshape(nrows, ncols)
+            bytes_ = bytearray(self.rgbImage.pData[:size])
+            img = np.array(bytes_).reshape(nrows, ncols)
         else:
             raise ValueError("Invalid argument: format='%s'. Expected 'bgr', 'rgb', or 'gray'." % format)
         return img
 
-    def GrabWxImage(self, scale=1.00, rgb=True):
-        """returns a wximage
-        optionally specifying scale and color
-        """
-        errcheck(fc2RetrieveBuffer(self._context, &self.rawImage))
-        ncols, nrows = self.rawImage.cols, self.rawImage.rows
-        size = ncols *nrows
-        if rgb:
-            errcheck(fc2ConvertImageTo(FC2_PIXEL_FORMAT_RGB8,
-                                       &self.rawImage, &self.rgbImage))
-            img = wx.ImageFromData(ncols, nrows, self.rgbImage.pData[:3*size])
-        else:
-            img = wx.ImageFromData(ncols, nrows, self.rawImage.pData[:size])
-
-        scale = max(scale, 0.05)
-        return img.Scale(int(scale*ncols), int(scale*nrows))
-
-    def GrabPILImage(self):
-        """"""
-        # We import PIL here so that PIL is only a requirement if you need PIL
-
-        # Retrieve the image
-        errcheck(fc2RetrieveBuffer( self._context, &self.rawImage ))
-
-        # calculate the size (in bytes) of the image
-        width, height = self.rawImage.cols, self.rawImage.rows
-        size = width * height
-
-        # perform the creation of the PIL Image
-        return Image.frombytes('L', (width, height), self.rawImage.pData[0:size])
+    # def GrabWxImage(self, scale=1.00, rgb=True):
+    #     """returns a wximage
+    #     optionally specifying scale and color
+    #     """
+    #     errcheck(fc2RetrieveBuffer(self._context, &self.rawImage))
+    #     ncols, nrows = self.rawImage.cols, self.rawImage.rows
+    #     size = ncols *nrows
+    #     if rgb:
+    #         errcheck(fc2ConvertImageTo(FC2_PIXEL_FORMAT_RGB8,
+    #                                    &self.rawImage, &self.rgbImage))
+    #         img = wx.ImageFromData(ncols, nrows, self.rgbImage.pData[:3*size])
+    #     else:
+    #         img = wx.ImageFromData(ncols, nrows, self.rawImage.pData[:size])
+    #
+    #     scale = max(scale, 0.05)
+    #     return img.Scale(int(scale*ncols), int(scale*nrows))
+    #
+    # def GrabPILImage(self):
+    #     """"""
+    #     # We import PIL here so that PIL is only a requirement if you need PIL
+    #
+    #     # Retrieve the image
+    #     errcheck(fc2RetrieveBuffer( self._context, &self.rawImage ))
+    #
+    #     # calculate the size (in bytes) of the image
+    #     width, height = self.rawImage.cols, self.rawImage.rows
+    #     size = width * height
+    #
+    #     # perform the creation of the PIL Image
+    #     return Image.frombytes('L', (width, height), self.rawImage.pData[0:size])
 
     def GrabImageToMemory(self, format="BMP"):
         """This is a really bad way to do this.  Fix later."""
@@ -427,7 +427,7 @@ cdef class Camera(object):
         def __get__(self):
             cdef fc2EmbeddedImageInfo embeddedInfo
             errcheck(fc2GetEmbeddedImageInfo(self._context, &embeddedInfo))
-            return embeddedInfo.available and embeddedInfo.timestamp.onOff
+            return embeddedInfo.timestamp.available and embeddedInfo.timestamp.onOff
 
         def __set__(self, enableTimeStamp):
             cdef fc2EmbeddedImageInfo embeddedInfo
@@ -441,7 +441,7 @@ cdef class Camera(object):
         def __get__(self):
             cdef fc2EmbeddedImageInfo embeddedInfo
             errcheck(fc2GetEmbeddedImageInfo(self._context, &embeddedInfo))
-            return embeddedInfo.available and embeddedInfo.timestamp.onOff
+            return embeddedInfo.timestamp.available and embeddedInfo.timestamp.onOff
 
         def __set__(self, enableTimeStamp):
             cdef fc2EmbeddedImageInfo embeddedInfo
