@@ -7,8 +7,8 @@
    HighGui module, until the user presses a key
 """
 
-import cv2
 import pyfly2
+import cv2
 
 
 def main(cameraIndex=0, format='bgr', scale=1.0, windowName='Live Video'):
@@ -16,14 +16,14 @@ def main(cameraIndex=0, format='bgr', scale=1.0, windowName='Live Video'):
     if context.num_cameras < 1:
         raise ValueError('No cameras found')
     camera = context.get_camera(cameraIndex)
-    camera.Connect()
-    camera.StartCapture()
+    camera.connect()
+    camera.start_capture()
     while cv2.waitKey(1) == -1:
-        image = camera.GrabNumPyImage(format)
+        image = camera.grab_numpy_image(format)
         if scale != 1.0:
             image = cv2.resize(image, (0, 0), fx=scale, fy=scale)
         cv2.imshow(windowName, image)
-    camera.StopCapture()
+    camera.stop_capture()
 
 
 if __name__ == "__main__":

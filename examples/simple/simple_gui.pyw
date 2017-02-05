@@ -62,7 +62,7 @@ class Panel(wx.Panel):
 
     def on_paint(self, event):
         bitmap = self.create_bitmap()
-        self.GetParent().check_size(bitmap.GetSize())
+        self.GetParent().check_size(bitmap.get_size())
         dc = wx.AutoBufferedPaintDC(self)
         dc.DrawBitmap(bitmap, 0, 0)
 
@@ -109,8 +109,8 @@ class Frame(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.OnClose)
 
         # wait for all wx stuff to successfully init, then turn on the camera        
-        self.camera.Connect()
-        self.camera.StartCapture()
+        self.camera.connect()
+        self.camera.start_capture()
 
     def OnSave(self, evt):
         ext = "png" if evt.EventObject == self.controlpanel.save_png_button else "jpg"
@@ -124,7 +124,7 @@ class Frame(wx.Frame):
             self.Center()
 
     def OnClose(self, event):
-        self.camera.StopCapture()    
+        self.camera.stop_capture()
         self.p.Destroy()
         self.Destroy()
 

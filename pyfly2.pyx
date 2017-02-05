@@ -7,12 +7,17 @@
 .. moduleauthor:: Keith Brafford,
 
 Some modifications Matt Newville
+
+Modified for Python 3, 64-bit machines, vs2015. Francesco P. Battaglia 2017
+
 """
 
 # from PIL import Image
 import numpy as np
 # import wx
 # import cStringIO
+
+from libc.stdio cimport printf
 
 error_dict = {
     FC2_ERROR_UNDEFINED                    :  "Undefined",
@@ -114,9 +119,6 @@ class FCColorProcessingAlgorithm(object):
     _DIRECTIONAL           = 7
     _FORCE_32BITS          = 0x7FFFFFFF
 
-ctypedef union fc2ContextContainer:
-    fc2Context   as_void
-    unsigned int as_int
 
 class FC2Error(Exception):
     """Exception wrapper for errors returned from underlying FlyCapture2 calls"""
@@ -190,41 +192,33 @@ cdef class Camera(object):
 
     cdef fc2PGRGuid guid
     cdef fc2Context _context
-    cdef fc2ContextContainer _container
     cdef fc2Image rawImage
     cdef fc2Image rgbImage
 
     def __dealloc__(self):
         pass
 
-    def __cinit__(self):
-        pass
+    # def __cinit__(self):
+    #     pass
 
-    def __init__(self, my_context_int, v0,v1, v2, v3):
+    def __init__(self):
         """"""
-        self._container.as_int = my_context_int
-        self._context = self._container.as_void
-        self.guid.value[0] = v0
-        self.guid.value[1] = v1
-        self.guid.value[2] = v2
-        self.guid.value[3] = v3
-
         errcheck(fc2CreateImage( &self.rawImage ))
         errcheck(fc2CreateImage( &self.rgbImage ))
 
-    def Connect(self):
+    def connect(self):
         """"""
         errcheck(fc2Connect(self._context, &self.guid))
 
-    def StartCapture(self):
+    def start_capture(self):
         """"""
         errcheck(fc2StartCapture(self._context))
 
-    def StopCapture(self):
+    def stop_capture(self):
         """"""
         errcheck(fc2StopCapture(self._context))
 
-    def GetProperty(self, name):
+    def get_property(self, name):
         cdef fc2Property p
         if name not in _PROPERTIES:
             return None
@@ -241,7 +235,7 @@ cdef class Camera(object):
                 "valueB": p.valueB}
 
 
-    def SetPropertyValue(self, name, value, auto=False, absolute=True):
+    def set_property_value(self, name, value, auto=False, absolute=True):
         """Set Value for property.  Supports setting the properties
         'brightness', 'sharpness', 'hue', 'saturation', 'gamma', 
         'shutter', 'gain', and 'white_balance' (see note below).
@@ -287,7 +281,7 @@ cdef class Camera(object):
         errcheck( fc2SetProperty(self._context, &p))
 
 
-    def GrabImageToDisk(self, filename, format="ext"):
+    def grab_image_to_disk(self, filename, file_format="ext"):
         """"""
         # Retrieve the image
         errcheck(fc2RetrieveBuffer( self._context, &self.rawImage ))
@@ -296,39 +290,39 @@ cdef class Camera(object):
         errcheck(fc2ConvertImageTo(FC2_PIXEL_FORMAT_RGB, &self.rawImage, &self.rgbImage))
 
         # Save it
-        image_format = self.image_format_map[format]
+        image_format = self.image_format_map[file_format]
         errcheck(fc2SaveImage( &self.rgbImage, filename, image_format))
 
-    def GetSize(self):
+    def get_size(self):
         """returns image size
         """
         errcheck(fc2RetrieveBuffer(self._context, &self.rawImage))
         return self.rawImage.cols, self.rawImage.rows
 
-    def GrabNumPyImage(self, format='bgr'):
+    def grab_numpy_image(self, image_format='bgr'):
         """return an image as a NumPy array
         optionally specifying color
         """
         errcheck(fc2RetrieveBuffer(self._context, &self.rawImage))
         ncols, nrows = self.rawImage.cols, self.rawImage.rows
         size = ncols * nrows
-        if format == 'bgr':
+        if image_format == 'bgr':
             errcheck(fc2ConvertImageTo(FC2_PIXEL_FORMAT_BGR,
                                        &self.rawImage, &self.rgbImage))
             bytes_ = bytearray(self.rgbImage.pData[:3*size])
             img = np.array(bytes_).reshape(nrows, ncols, 3)
-        elif format == 'rgb':
+        elif image_format == 'rgb':
             errcheck(fc2ConvertImageTo(FC2_PIXEL_FORMAT_RGB8,
                                        &self.rawImage, &self.rgbImage))
             bytes_ = bytearray(self.rgbImage.pData[:3*size])
             img = np.array(bytes_).reshape(nrows, ncols, 3)
-        elif format == 'gray':
+        elif image_format == 'gray':
             errcheck(fc2ConvertImageTo(FC2_PIXEL_FORMAT_MONO8,
                                        &self.rawImage, &self.rgbImage))
             bytes_ = bytearray(self.rgbImage.pData[:size])
             img = np.array(bytes_).reshape(nrows, ncols)
         else:
-            raise ValueError("Invalid argument: format='%s'. Expected 'bgr', 'rgb', or 'gray'." % format)
+            raise ValueError("Invalid argument: format='%s'. Expected 'bgr', 'rgb', or 'gray'." % image_format)
         return img
 
     # def GrabWxImage(self, scale=1.00, rgb=True):
@@ -362,18 +356,18 @@ cdef class Camera(object):
     #     # perform the creation of the PIL Image
     #     return Image.frombytes('L', (width, height), self.rawImage.pData[0:size])
 
-    def GrabImageToMemory(self, format="BMP"):
+    def grab_image_to_memory(self, image_format="BMP"):
         """This is a really bad way to do this.  Fix later."""
-        if format == "ext":
+        if image_format == "ext":
             raise TypeError("specifying image format by file extension makes no sense here")
 
         import tempfile
         import os
         import shutil
         tempdir = tempfile.mkdtemp(prefix = "pfc")
-        tempfilename = os.path.join(tempdir, "image." + format)
+        tempfilename = os.path.join(tempdir, "image." + image_format)
 
-        self.GrabImageToDisk(tempfilename)
+        self.grab_image_to_disk(tempfilename)
 
         # read in the image
         with open(tempfilename,"rb") as fp:
@@ -383,19 +377,19 @@ cdef class Camera(object):
         shutil.rmtree(tempdir)
         return imagedata
 
-    def DemoGrabImages(self, numImagesToGrab):
+    def demo_grab_images(self, num_images_to_grab):
         """Hey"""
-        cdef fc2TimeStamp prevTimestamp
+        cdef fc2TimeStamp prev_timestamp
         cdef fc2TimeStamp ts
         cdef int diff
 
-        prevTimestamp.seconds = 0
-        prevTimestamp.microSeconds = 0
-        prevTimestamp.cycleSeconds = 0
-        prevTimestamp.cycleCount = 0
-        prevTimestamp.cycleOffset = 0
+        prev_timestamp.seconds = 0
+        prev_timestamp.microSeconds = 0
+        prev_timestamp.cycleSeconds = 0
+        prev_timestamp.cycleCount = 0
+        prev_timestamp.cycleOffset = 0
         for i in range(8):
-            prevTimestamp.reserved[i] = 0
+            prev_timestamp.reserved[i] = 0
 
 
         # If externally allocated memory is to be used for the converted image,
@@ -404,15 +398,15 @@ cdef class Camera(object):
         # the fc2Image structure correctly. This can be done at this point,
         # assuming that the memory has already been allocated.
 
-        for i in range(numImagesToGrab):
+        for i in range(num_images_to_grab):
             # Retrieve the image
             errcheck(fc2RetrieveBuffer( self._context, &self.rawImage ))
 
             # Get and print out the time stamp
             ts = fc2GetImageTimeStamp( &self.rawImage)
-            diff = (ts.cycleSeconds - prevTimestamp.cycleSeconds) * 8000 \
-                        + (ts.cycleCount - prevTimestamp.cycleCount)
-            prevTimestamp = ts
+            diff = (ts.cycleSeconds - prev_timestamp.cycleSeconds) * 8000 \
+                        + (ts.cycleCount - prev_timestamp.cycleCount)
+            prev_timestamp = ts
             # print "timestamp [%d %d] - %d" % (ts.cycleSeconds, ts.cycleCount, diff)
 
         # Convert the final image to RGB
@@ -429,11 +423,11 @@ cdef class Camera(object):
             errcheck(fc2GetEmbeddedImageInfo(self._context, &embeddedInfo))
             return embeddedInfo.timestamp.available and embeddedInfo.timestamp.onOff
 
-        def __set__(self, enableTimeStamp):
+        def __set__(self, enable_timestamp):
             cdef fc2EmbeddedImageInfo embeddedInfo
             errcheck(fc2GetEmbeddedImageInfo(self._context, &embeddedInfo))
             if embeddedInfo.timestamp.available:
-                embeddedInfo.timestamp.onOff = enableTimeStamp
+                embeddedInfo.timestamp.onOff = enable_timestamp
             errcheck(fc2SetEmbeddedImageInfo(self._context, &embeddedInfo))
 
     property gain:
@@ -443,11 +437,11 @@ cdef class Camera(object):
             errcheck(fc2GetEmbeddedImageInfo(self._context, &embeddedInfo))
             return embeddedInfo.timestamp.available and embeddedInfo.timestamp.onOff
 
-        def __set__(self, enableTimeStamp):
+        def __set__(self, enable_timestamp):
             cdef fc2EmbeddedImageInfo embeddedInfo
             errcheck(fc2GetEmbeddedImageInfo(self._context, &embeddedInfo))
             if embeddedInfo.timestamp.available:
-                embeddedInfo.timestamp.onOff = enableTimeStamp
+                embeddedInfo.timestamp.onOff = enable_timestamp
             errcheck(fc2SetEmbeddedImageInfo(self._context, &embeddedInfo))
 
     property info:
@@ -465,10 +459,20 @@ cdef class Camera(object):
                       "firmwareBuildTime"  : camInfo.firmwareBuildTime,
                     }
 
+cdef create_camera(void *my_context, int v0, int v1, int v2, int v3):
+    """"""
+    cam = Camera()
+    cam._context = my_context
+    cam.guid.value[0] = v0
+    cam.guid.value[1] = v1
+    cam.guid.value[2] = v2
+    cam.guid.value[3] = v3
+    return cam
+
+
 cdef class Context(object):
     """Hey"""
     cdef fc2Context _context
-    cdef fc2ContextContainer _container
 
     def __dealloc__(self):
         errcheck(fc2DestroyContext(self._context))
@@ -479,7 +483,6 @@ cdef class Context(object):
     def __init__(self):
         """Hey"""
         errcheck(fc2CreateContext(&self._context))
-        self._container.as_void = self._context
 
     def __repr__(self):
         return "pyfly2.Context object at 0x%08X" % id(self)
@@ -495,8 +498,10 @@ cdef class Context(object):
         """get camera by index.  works differently from flycap 1 api"""
         cdef fc2PGRGuid guid
         errcheck(fc2GetCameraFromIndex(self._context, index, &guid))
-        cdef unsigned int c = self._container.as_int
-        return Camera(c, guid.value[0], guid.value[1], guid.value[2], guid.value[3])
+        printf("in get_camera: ")
+        printf("context: %p\n", self._context)
+        printf("guid: %d\t%d\t%d\t%d\t", guid.value[0], guid.value[1], guid.value[2], guid.value[3])
+        return create_camera(<void *>self._context, guid.value[0], guid.value[1], guid.value[2], guid.value[3])
 
     def get_mode(self):
         """Get video mode and frame rate."""
@@ -505,8 +510,8 @@ cdef class Context(object):
         errcheck(fc2GetVideoModeAndFrameRate(self._context, &videoMode, &frameRate))
         return videoMode, frameRate
 
-    def set_mode(self, videoMode, frameRate):
+    def set_mode(self, video_mode, frame_rate):
         """Set video mode and frame rate."""
-        cdef fc2VideoMode cVideoMode = videoMode
-        cdef fc2FrameRate cFrameRate = frameRate
-        errcheck(fc2SetVideoModeAndFrameRate(self._context, cVideoMode, cFrameRate))
+        cdef fc2VideoMode c_video_mode = video_mode
+        cdef fc2FrameRate c_frame_rate = frame_rate
+        errcheck(fc2SetVideoModeAndFrameRate(self._context, c_video_mode, c_frame_rate))

@@ -10,38 +10,38 @@
 import pyfly2
 
 def grab(fname):
-    print "Getting pyfly2 context ..."
+    print("Getting pyfly2 context ...")
     context = pyfly2.Context()
-    print "Done."
-    
+    print("Done.")
+
     if context.num_cameras:
     
-        print "Getting camera ...",
+        print("Getting camera ...", end=' ')
         camera = context.get_camera(0)
-        print "Done."
-        
-        print "Connecting to camera ...",
-        camera.Connect()
-        print "Done."
-        
-        print "Querying camera information ..."
-        for k,v in camera.info.iteritems():
-            print k,v
-        print "Done."
+        print("Done.")
 
-        print "Starting capture mode ...",
-        camera.StartCapture()
-        print "Done."
-        
-        print "Grabbing single image ...",
-        camera.GrabImageToDisk(fname)
-        print "Done."
-        
-        print "Stopping capture mode ...",
-        camera.StopCapture()
-        print "Done."
-    
-        print "Image saved as", fname    
+        print("Connecting to camera ...", end=' ')
+        camera.connect()
+        print("Done.")
+
+        print("Querying camera information ...")
+        for k,v in camera.info.items():
+            print(k, v)
+        print("Done.")
+
+        print("Starting capture mode ...", end=' ')
+        camera.start_capture()
+        print("Done.")
+
+        print("Grabbing single image ...", end=' ')
+        camera.grab_image_to_disk(fname)
+        print("Done.")
+
+        print("Stopping capture mode ...", end=' ')
+        camera.stop_capture()
+        print("Done.")
+
+        print("Image saved as", fname)
     else:
         raise ValueError("No cameras found\n")
     

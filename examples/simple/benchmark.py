@@ -1,6 +1,5 @@
 import time
 import pyfly2
-import os
 
 class SpeedTest(object):
     def __init__(self, camera):
@@ -9,8 +8,8 @@ class SpeedTest(object):
         self.update_rate = 1.0
 
     def Start(self):
-        self.camera.Connect()
-        self.camera.StartCapture()
+        self.camera.connect()
+        self.camera.start_capture()
 
         self.starttime = time.clock()
 
@@ -25,10 +24,11 @@ class SpeedTest(object):
                     self.fps = self.count / elapsed
                     self.starttime = now
                     self.count = 0
-                    print "FPS =", self.fps
+                    print ("FPS =", self.fps)
         except:
-            self.camera.StopCapture()
+            self.camera.stop_capture()
             raise
+
 
 def main():
     context = pyfly2.Context()

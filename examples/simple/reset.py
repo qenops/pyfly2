@@ -12,8 +12,8 @@
 
 import pyfly2
 
-print "Getting pyfly2 context ..."
+print("Getting pyfly2 context ...")
 context = pyfly2.Context()
-print "Done."
+print("Done.")
 
-print "Now quitting."
+print("Now quitting.")
